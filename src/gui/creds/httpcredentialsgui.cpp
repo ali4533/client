@@ -14,6 +14,7 @@
  */
 
 #include <QInputDialog>
+#include <QLabel>
 #include "creds/httpcredentialsgui.h"
 #include "theme.h"
 #include "account.h"
@@ -31,22 +32,47 @@ void HttpCredentialsGui::askFromUser()
 
 void HttpCredentialsGui::askFromUserAsync()
 {
-    QString msg = tr("Please enter %1 password:\n"
-                     "\n"
-                     "User: %2\n"
-                     "Account: %3\n")
-                  .arg(Theme::instance()->appNameGUI(), _user, _account->displayName());
+    QString msg;
+    bool hasTokenAuth = _account->serverVersionInt() >= 0x090100;
+    if (hasTokenAuth) {
+        msg = tr("Please enter %1 password or token:<br>"
+                     "<br>"
+                     "User: %2<br>"
+                     "Account: %3<br>"
+                     "<br>"
+                     "<a href=\"%4/index.php/settings/personal#devices\">Click here</a>"
+                     " to request a device token from the browser.<br>")
+                  .arg(Utility::escape(Theme::instance()->appNameGUI()),
+                       Utility::escape(_user),
+                       Utility::escape(_account->displayName()),
+                       Utility::escape(_account->url().toString()));
+    } else {
+        msg = tr("Please enter %1 password:<br>"
+                     "<br>"
+                     "User: %2<br>"
+                     "Account: %3<br>")
+                  .arg(Utility::escape(Theme::instance()->appNameGUI()),
+                       Utility::escape(_user),
+                       Utility::escape(_account->displayName()));
+    }
     if (!_fetchErrorString.isEmpty()) {
-        msg += QLatin1String("\n") + tr("Reading from keychain failed with error: '%1'").arg(
+        msg += QLatin1String("<br>") + tr("Reading from keychain failed with error: '%1'").arg(
                     _fetchErrorString) + QLatin1String("\n");
     }
 
-    bool ok = false;
-    QString pwd = QInputDialog::getText(0, tr("Enter Password"), msg,
-                                 QLineEdit::Password, _previousPassword,
-                                 &ok);
+    QInputDialog dialog;
+    dialog.setWindowTitle(tr("Enter Password"));
+    dialog.setLabelText(msg);
+    dialog.setTextValue(_previousPassword);
+    dialog.setTextEchoMode(QLineEdit::Password);
+    if (QLabel *dialogLabel = dialog.findChild<QLabel *>()) {
+        dialogLabel->setOpenExternalLinks(true);
+        dialogLabel->setTextFormat(Qt::RichText);
+    }
+
+    bool ok = dialog.exec();
     if (ok) {
-        _password = pwd;
+        _password = dialog.textValue();
         _ready = true;
         persist();
     }

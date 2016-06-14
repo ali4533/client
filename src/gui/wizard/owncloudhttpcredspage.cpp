@@ -114,6 +114,19 @@ void OwncloudHttpCredsPage::initializePage()
             _ui.lePassword->setText(password);
         }
     }
+
+    bool hasTokenAuth = ocWizard->account()->serverVersionInt() >= 0x090100;
+    _ui.passwordLabel->setText(hasTokenAuth ? tr("Password or Token") : tr("Password"));
+    if (hasTokenAuth) {
+        _ui.tokenLabel->setText(tr("<a href=\"%1/index.php/settings/personal#devices\">Click here</a>"
+                          " to request a device token from the browser.")
+                        .arg(ocWizard->account()->url().toString()));
+        _ui.tokenLabel->show();
+    } else {
+        _ui.tokenLabel->hide();
+    }
+
+
     _ui.leUsername->setFocus();
 }
 
